@@ -419,8 +419,6 @@ class QuerySet(object):
         # this by using RETURNING clause for the insert query. We're punting
         # on these for now because they are relatively rare cases.
         assert batch_size is None or batch_size > 0
-        if self.model._meta.parents:
-            raise ValueError("Can't bulk create an inherited model")
         if not objs:
             return objs
         self._for_write = True
@@ -440,8 +438,12 @@ class QuerySet(object):
                 if objs_with_pk:
                     self._batched_insert(objs_with_pk, fields, batch_size)
                 if objs_without_pk:
+                    if self.model._meta.parents:
+                        raise ValueError("Can't bulk create an inherited model if some instances do not have PKs")                    
                     fields= [f for f in fields if not isinstance(f, AutoField)]
-                    self._batched_insert(objs_without_pk, fields, batch_size)
+                    ids = self._batched_insert(objs_without_pk, fields, batch_size) 
+                    for (obj_without_pk, pk) in zip(objs_without_pk, ids): 
+                        obj_without_pk.pk = pk 
             if forced_managed:
                 transaction.commit(using=self.db)
             else:
@@ -896,10 +898,22 @@ class QuerySet(object):
             return
         ops = connections[self.db].ops
         batch_size = (batch_size or max(ops.bulk_batch_size(fields, objs), 1))
+        ret = [] 
         for batch in [objs[i:i+batch_size]
                       for i in range(0, len(objs), batch_size)]:
-            self.model._base_manager._insert(batch, fields=fields,
-                                             using=self.db)
+            if connections[self.db].features.can_return_id_from_insert: 
+                if len(objs) > 1: 
+                    ret.extend(self.model._base_manager._insert(batch, fields=fields, 
+                                                                using=self.db, return_id=True)) 
+                else: 
+                    ret.append(self.model._base_manager._insert(batch, fields=fields, 
+                                                                using=self.db, return_id=True)) 
+            else: 
+                self.model._base_manager._insert(batch, fields=fields, 
+                                                 using=self.db) 
+        return ret 
+
+
 
     def _clone(self, klass=None, setup=False, **kwargs):
         if klass is None:
