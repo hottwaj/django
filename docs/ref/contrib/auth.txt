@@ -111,16 +111,28 @@ Methods
 
     .. method:: is_authenticated()
 
-        Always returns ``True``. This is a way to tell if the user has been
-        authenticated. This does not imply any permissions, and doesn't check
-        if the user is active - it only indicates that the user has provided a
-        valid username and password.
+        Always returns ``True`` (as opposed to
+        ``AnonymousUser.is_authenticated()`` which always returns ``False``).
+        This is a way to tell if the user has been authenticated. This does not
+        imply any permissions, and doesn't check if the user is active or has
+        a valid session. Even though normally you will call this method on
+        ``request.user`` to find out whether it has been populated by the
+        :class:`~django.contrib.auth.middleware.AuthenticationMiddleware`
+        (representing the currently logged-in user), you should know this method
+        returns ``True`` for any :class:`~django.contrib.auth.models.User`
+        instance.
 
     .. method:: get_full_name()
 
         Returns the :attr:`~django.contrib.auth.models.User.first_name` plus
         the :attr:`~django.contrib.auth.models.User.last_name`, with a space in
         between.
+
+    .. method:: get_short_name()
+
+        .. versionadded:: 1.5
+
+        Returns the :attr:`~django.contrib.auth.models.User.first_name`.
 
     .. method:: set_password(raw_password)
 
@@ -248,7 +260,7 @@ Manager methods
 
         See :ref:`Creating users <topics-auth-creating-users>` for example usage.
 
-    .. method:: create_superuser(self, username, email, password, **extra_fields)
+    .. method:: create_superuser(username, email, password, **extra_fields)
 
         Same as :meth:`create_user`, but sets :attr:`~models.User.is_staff` and
         :attr:`~models.User.is_superuser` to ``True``.

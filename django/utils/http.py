@@ -217,7 +217,7 @@ def parse_etags(etag_str):
 
 def quote_etag(etag):
     """
-    Wraps a string in double quotes escaping contents as necesary.
+    Wraps a string in double quotes escaping contents as necessary.
     """
     return '"%s"' % etag.replace('\\', '\\\\').replace('"', '\\"')
 
@@ -231,11 +231,24 @@ def same_origin(url1, url2):
 def is_safe_url(url, host=None):
     """
     Return ``True`` if the url is a safe redirection (i.e. it doesn't point to
-    a different host).
+    a different host and uses a safe scheme).
 
     Always returns ``False`` on an empty url.
     """
     if not url:
         return False
-    netloc = urllib_parse.urlparse(url)[1]
-    return not netloc or netloc == host
+    # Chrome treats \ completely as /
+    url = url.replace('\\', '/')
+    # Chrome considers any URL with more than two slashes to be absolute, but
+    # urlaprse is not so flexible. Treat any url with three slashes as unsafe.
+    if url.startswith('///'):
+        return False
+    url_info = urllib_parse.urlparse(url)
+    # Forbid URLs like http:///example.com - with a scheme, but without a hostname.
+    # In that URL, example.com is not the hostname but, a path component. However,
+    # Chrome will still consider example.com to be the hostname, so we must not
+    # allow this syntax.
+    if not url_info.netloc and url_info.scheme:
+        return False
+    return (not url_info.netloc or url_info.netloc == host) and \
+        (not url_info.scheme or url_info.scheme in ['http', 'https'])

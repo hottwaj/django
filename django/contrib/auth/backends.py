@@ -5,7 +5,7 @@ from django.contrib.auth.models import Permission
 
 class ModelBackend(object):
     """
-    Authenticates against django.contrib.auth.models.User.
+    Authenticates against settings.AUTH_USER_MODEL.
     """
 
     def authenticate(self, username=None, password=None, **kwargs):
@@ -62,8 +62,8 @@ class ModelBackend(object):
         return False
 
     def get_user(self, user_id):
+        UserModel = get_user_model()
         try:
-            UserModel = get_user_model()
             return UserModel._default_manager.get(pk=user_id)
         except UserModel.DoesNotExist:
             return None
