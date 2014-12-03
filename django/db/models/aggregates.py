@@ -23,7 +23,7 @@ class Aggregate(object):
         return '%s__%s' % (self.lookup, self.name.lower())
     default_alias = property(_default_alias)
 
-    def add_to_query(self, query, alias, col, source, is_summary):
+    def add_to_query(self, query, alias, col, source, is_summary, model):
         """Add the aggregate to the nominated query.
 
         This method is used to convert the generic Aggregate definition into a
@@ -40,6 +40,8 @@ class Aggregate(object):
            output type of the aggregate.
          * is_summary is a boolean that is set True if the aggregate is a
            summary value rather than an annotation.
+         * model is the model used to set up the query.  May be used to 
+           process extra aggregate fields (for multiple field aggregates) if necessary
         """
         klass = getattr(query.aggregates_module, self.name)
         aggregate = klass(col, source=source, is_summary=is_summary, **self.extra)
