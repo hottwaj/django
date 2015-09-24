@@ -959,13 +959,13 @@ class Query(object):
         self.included_inherited_models = {}
 
 
-    def add_aggregate(self, aggregate, model, alias, is_summary):
+    def process_aggregate_field(self, aggregate, agg_field, model, is_summary):
         """
-        Adds a single aggregate expression to the Query
+        Return a col, source tuple for an aggregate field - used to help set up multi-field aggregates
         """
         opts = model._meta
-        field_list = aggregate.lookup.split(LOOKUP_SEP)
-        if len(field_list) == 1 and aggregate.lookup in self.aggregates:
+        field_list = agg_field.split(LOOKUP_SEP)
+        if len(field_list) == 1 and agg_field in self.aggregates:
             # Aggregate is over an annotation
             field_name = field_list[0]
             col = field_name
@@ -1005,8 +1005,16 @@ class Query(object):
             source = opts.get_field(field_name)
             col = field_name
 
+        return col, source
+
+    def add_aggregate(self, aggregate, model, alias, is_summary):
+        """
+        Adds a single aggregate expression to the Query
+        """
+        col, source = self.process_aggregate_field(aggregate, aggregate.lookup, model, is_summary)
+
         # Add the aggregate to the query
-        aggregate.add_to_query(self, alias, col=col, source=source, is_summary=is_summary)
+        aggregate.add_to_query(self, alias, col=col, source=source, is_summary=is_summary, model=model)
 
     def build_filter(self, filter_expr, branch_negated=False, current_negated=False,
                      can_reuse=None):
